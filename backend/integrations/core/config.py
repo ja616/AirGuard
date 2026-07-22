@@ -18,10 +18,15 @@ class IntegrationConfig(BaseModel):
     # AWS Config
     aws_region: str = "us-east-1"
     aws_profile: str = "default"
+    aws_access_key_id: str = ""
+    aws_secret_access_key: str = ""
     
     # Slack Config
     slack_bot_token: str = ""
     slack_channel_id: str = ""
+
+    # Webhook Auth
+    airguard_webhook_token: str = ""  # X-AirGuard-Token for /api/v1/airflow/webhook
 
     @classmethod
     def load_from_env(cls) -> "IntegrationConfig":
@@ -33,8 +38,11 @@ class IntegrationConfig(BaseModel):
             airflow_password=os.getenv("AIRFLOW_PASSWORD", "admin"),
             aws_region=os.getenv("AWS_REGION", "us-east-1"),
             aws_profile=os.getenv("AWS_PROFILE", "default"),
+            aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID", ""),
+            aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY", ""),
             slack_bot_token=os.getenv("SLACK_BOT_TOKEN", ""),
-            slack_channel_id=os.getenv("SLACK_CHANNEL_ID", "")
+            slack_channel_id=os.getenv("SLACK_CHANNEL_ID", ""),
+            airguard_webhook_token=os.getenv("AIRGUARD_WEBHOOK_TOKEN", ""),
         )
 
 # Global singleton configuration

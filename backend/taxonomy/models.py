@@ -29,6 +29,7 @@ class IncidentDefinition(BaseModel):
     observable_symptoms: List[str] = Field(description="What the user or Datadog sees")
     required_evidence: List[str] = Field(description="Facts needed to prove the incident")
     required_tools: List[str] = Field(description="Deterministic tools needed to gather evidence")
+    classification_signals: dict[str, float] = Field(default_factory=dict, description="Map of normalized evidence key to vote weight for the classifier")
     
     correlation_strategy: str = Field(description="How to connect Airflow and AWS telemetry")
     confidence_strategy: str = Field(description="How to calculate confidence score (no LLMs)")

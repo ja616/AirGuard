@@ -79,7 +79,8 @@ services:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
       interval: 10s
       timeout: 10s
-      retries: 5
+      retries: 15
+      start_period: 40s
     depends_on:
       postgres-airflow:
         condition: service_healthy
@@ -114,17 +115,11 @@ services:
         condition: service_healthy
       airflow-webserver:
         condition: service_healthy
-    volumes:
-      - ~/.aws:/root/.aws:ro
+
     networks:
       - airguard-net
 
-  frontend-placeholder:
-    image: nginx:alpine
-    ports:
-      - "3000:80"
-    networks:
-      - airguard-net
+
 
 networks:
   airguard-net:

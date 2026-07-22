@@ -1,37 +1,47 @@
-from typing import List
-from backend.investigation.models import RCAHypothesis, CorrelatedFinding, ConfidenceExplanation
+from typing import List, Any
+from backend.investigation.models import ConfidenceExplanation, ClassifiedIncident, CorrelatedFinding, NormalizedEvidenceBundle
 from backend.core.constants import ConfidenceLevel
 
-def run(rca: RCAHypothesis, findings: List[CorrelatedFinding]) -> ConfidenceExplanation:
-    score = 0.5
+def run(classified: ClassifiedIncident, findings: List[CorrelatedFinding], bundle: NormalizedEvidenceBundle, plan: Any = None) -> ConfidenceExplanation:
+    """
+    Calculates confidence based strictly on evidence corroboration.
+    """
+    score = 0.4 # Baseline score
     reasons = []
     penalties = []
     
     if not findings:
-        score -= 0.2
-        penalties.append("No correlated findings to support hypothesis")
-    
-    sources = set()
-    for f in findings:
-        sources.add(f.source)
-        if f.severity == "high":
-            score += 0.2
-            reasons.append(f"Strong evidence from {f.source}")
-        elif f.severity == "medium":
-            score += 0.1
-            reasons.append(f"Moderate evidence from {f.source}")
-        else:
-            score += 0.05
-            
-    if len(sources) > 1:
-        score += 0.15
-        reasons.append("Cross-system correlation found")
-    elif len(sources) == 1:
-        score -= 0.05
-        penalties.append("Evidence limited to a single source")
+        penalties.append("No correlated findings were generated from the evidence.")
+    else:
+        # Tally high-severity and secondary findings
+        high_severity_findings = [f for f in findings if f.severity.lower() in ("high", "critical")]
+        other_findings = [f for f in findings if f.severity.lower() not in ("high", "critical")]
         
-    score = round(min(max(score, 0.0), 1.0), 2)
+        if high_severity_findings:
+            boost = 0.2 * len(high_severity_findings)
+            score += boost
+            sources = set([f.source for f in high_severity_findings])
+            reasons.append(f"Strong corroboration from {len(high_severity_findings)} high-severity findings across sources: {', '.join(sources)}.")
+            
+        if other_findings:
+            boost = 0.1 * len(other_findings)
+            score += boost
+            reasons.append(f"Additional corroboration from {len(other_findings)} secondary findings.")
+            
+        # Check cross-domain corroboration
+        sources = set([f.source for f in findings])
+        if len(sources) > 1:
+            score += 0.1
+            reasons.append("Cross-domain evidence corroboration detected (multiple distinct telemetry sources).")
+            
+        if len(findings) == 1 and findings[0].severity.lower() == "low":
+            penalties.append("Only a single, low-severity finding supports the hypothesis.")
+            score -= 0.2
+
+    # Ensure bounds
+    score = max(0.0, min(1.0, score))
     
+    # Determine level
     if score >= 0.8:
         level = ConfidenceLevel.HIGH
     elif score >= 0.5:
@@ -39,4 +49,9 @@ def run(rca: RCAHypothesis, findings: List[CorrelatedFinding]) -> ConfidenceExpl
     else:
         level = ConfidenceLevel.LOW
         
-    return ConfidenceExplanation(score=score, level=level, reasons=reasons, penalties=penalties)
+    return ConfidenceExplanation(
+        score=round(score, 2),
+        level=level,
+        reasons=reasons,
+        penalties=penalties
+    )

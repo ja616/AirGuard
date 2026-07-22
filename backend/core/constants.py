@@ -10,14 +10,12 @@ class SupportedAWSService(str, Enum):
     COST_EXPLORER = "cost_explorer"
 
 class IncidentCategory(str, Enum):
-    SCHEDULING = "scheduling"
-    EXECUTION = "execution"
-    DEPENDENCY = "dependency"
-    PERFORMANCE = "performance"
-    INFRASTRUCTURE = "infrastructure"
-    COST = "cost"
-    DATA = "data"
-    COMPOSITE = "composite"
+    WORKFLOW_EXECUTION = "workflow_execution"
+    DATA_READINESS = "data_readiness"
+    COMPUTE_INFRASTRUCTURE = "compute_infrastructure"
+    ML_OPERATIONS = "ml_operations"
+    COST_IMPACT = "cost_impact"
+    BEHAVIOURAL_ANOMALY = "behavioural_anomaly"
 
 class ConfidenceLevel(str, Enum):
     LOW = "low"

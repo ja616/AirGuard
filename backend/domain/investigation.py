@@ -13,7 +13,7 @@ class InvestigationState(str, Enum):
     GENERATING_TIMELINE = "GeneratingTimeline"
     GENERATING_REPORT = "GeneratingReport"
     SLACK_DISPATCH = "SlackDispatch"
-    WAITING_APPROVAL = "WaitingApproval"
+    READY_FOR_REVIEW = "ReadyForReview"
     COMPLETED = "Completed"
     FAILED = "Failed"
 
@@ -40,12 +40,16 @@ class ReportArtifact(ArtifactBase):
     type: str = "report"
     content: OperationalReport
 
+class EvidenceArtifact(ArtifactBase):
+    type: str = "evidence"
+    collected: List[Dict[str, Any]]
+
 class GraphArtifact(ArtifactBase):
     type: str = "graph"
     nodes: List[Dict[str, Any]]
     edges: List[Dict[str, Any]]
 
-ArtifactType = Union[TimelineArtifact, ReportArtifact, GraphArtifact]
+ArtifactType = Union[TimelineArtifact, ReportArtifact, GraphArtifact, EvidenceArtifact]
 
 class Investigation(BaseModel):
     id: str

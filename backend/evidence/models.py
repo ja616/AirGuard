@@ -3,7 +3,7 @@ First-class domain objects for Investigation Evidence.
 Tools no longer return raw data; they return strongly typed Evidence.
 """
 from pydantic import BaseModel, Field
-from typing import Any, Dict
+from typing import Any, Dict, List
 from datetime import datetime
 import uuid
 
@@ -20,42 +20,41 @@ class Evidence(BaseModel):
 
 # --- Specific Evidence Types ---
 
-class WorkflowEvidence(Evidence):
-    dag_id: str
-    run_id: str
-    state: str
+class ToolFailure(BaseModel):
+    tool: str
+    reason: str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
 
-class TaskEvidence(Evidence):
-    dag_id: str
-    task_id: str
-    execution_date: str
-    state: str
+class EvidenceBundleResult(BaseModel):
+    evidence: List[Evidence]
+    failures: List[ToolFailure]
+    collection_duration_ms: int = 0
 
-class RetryEvidence(Evidence):
-    task_id: str
-    try_number: int
-    exception_preview: str
+# --- Specific Typed Evidence ---
 
-class MetricEvidence(Evidence):
-    metric_name: str
-    value: float
-    unit: str
+class AirflowEvidence(Evidence):
+    pass
+
+class CloudWatchEvidence(Evidence):
+    pass
 
 class CloudTrailEvidence(Evidence):
-    event_name: str
-    user_identity: str
-    resource_arn: str
+    pass
+
+class SchedulerEvidence(Evidence):
+    pass
+
+class SlackEvidence(Evidence):
+    pass
+
+class LambdaEvidence(Evidence):
+    pass
 
 class CostEvidence(Evidence):
-    granularity: str
-    amount: float
-    currency: str
+    pass
 
-class DependencyEvidence(Evidence):
-    upstream_task_id: str
-    downstream_task_id: str
-    relationship_type: str
+class WorkerEvidence(Evidence):
+    pass
 
-class ScheduleEvidence(Evidence):
-    previous_schedule: str
-    new_schedule: str
+class InfrastructureEvidence(Evidence):
+    pass

@@ -42,6 +42,21 @@ class IAirflowClient(IIntegrationClient):
 
     @abstractmethod
     def get_read_only_metadata(self) -> Dict[str, Any]: pass
+    
+    @abstractmethod
+    def trigger_dag_run(self, dag_id: str) -> str: pass
+    
+    @abstractmethod
+    def get_dag_run_by_id(self, dag_id: str, run_id: str) -> Dict[str, Any]: pass
+    
+    @abstractmethod
+    def get_all_dag_ids(self) -> List[str]: pass
+    
+    @abstractmethod
+    def get_task_xcoms(self, dag_id: str, run_id: str, task_id: str) -> List[Dict[str, Any]]: pass
+    
+    @abstractmethod
+    def get_pool_stats(self) -> Dict[str, Any]: pass
 
 
 class ISlackClient(IIntegrationClient):
@@ -62,11 +77,26 @@ class ISlackClient(IIntegrationClient):
 
 
 # AWS Specific Service Interfaces
-class ICloudWatchClient(IIntegrationClient): pass
+class ICloudWatchClient(IIntegrationClient):
+    @abstractmethod
+    def get_metric_data(self, queries: List[Dict[str, Any]], start_time: Any, end_time: Any) -> Dict[str, Any]: pass
+    
+    @abstractmethod
+    def get_lambda_errors(self, function_name: str, start_time: Any, end_time: Any) -> int: pass
+    
+    @abstractmethod
+    def get_lambda_duration(self, function_name: str, start_time: Any, end_time: Any) -> float: pass
+    
+    @abstractmethod
+    def get_sagemaker_training_metrics(self, job_name: str, start_time: Any, end_time: Any) -> Dict[str, Any]: pass
 class ICloudTrailClient(IIntegrationClient): pass
 class ICostExplorerClient(IIntegrationClient): pass
 class ISageMakerClient(IIntegrationClient): pass
 class ILambdaClient(IIntegrationClient): pass
+
+class IS3Client(IIntegrationClient):
+    @abstractmethod
+    def get_prefix_metrics(self, bucket: str, prefix: str) -> Dict[str, Any]: pass
 
 class IAWSRegistry(ABC):
     @abstractmethod
@@ -83,3 +113,6 @@ class IAWSRegistry(ABC):
     
     @abstractmethod
     def get_lambda_client(self) -> ILambdaClient: pass
+
+    @abstractmethod
+    def get_s3_client(self) -> IS3Client: pass

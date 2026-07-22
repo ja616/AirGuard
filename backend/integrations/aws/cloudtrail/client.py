@@ -8,7 +8,8 @@ from backend.integrations.core.config import config
 
 class Boto3CloudTrailClient(ICloudTrailClient):
     def __init__(self):
-        self.client = boto3.client('cloudtrail', region_name=config.aws_region)
+        from backend.integrations.aws.client_factory import get_boto3_client
+        self.client = get_boto3_client('cloudtrail')
 
     @with_telemetry("AWS_CloudTrail", "health")
     def health(self) -> bool:

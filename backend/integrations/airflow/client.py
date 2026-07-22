@@ -82,3 +82,48 @@ class RestAirflowClient(IAirflowClient):
         url = f"{self.base_url}/config"
         response = requests.get(url, auth=self.auth, headers={"Accept": "application/json"}, timeout=10)
         return response.json() if response.ok else {}
+
+    @with_retry(max_retries=3)
+    @with_telemetry("Airflow", "trigger_dag_run")
+    def trigger_dag_run(self, dag_id: str) -> str:
+        url = f"{self.base_url}/dags/{dag_id}/dagRuns"
+        # Create dag run with empty conf
+        response = requests.post(url, auth=self.auth, json={"conf": {}}, timeout=10)
+        response.raise_for_status()
+        return response.json().get("dag_run_id", "")
+
+    @with_retry(max_retries=3)
+    @with_telemetry("Airflow", "get_dag_run_by_id")
+    def get_dag_run_by_id(self, dag_id: str, run_id: str) -> Dict[str, Any]:
+        url = f"{self.base_url}/dags/{dag_id}/dagRuns/{run_id}"
+        response = requests.get(url, auth=self.auth, timeout=10)
+        response.raise_for_status()
+        return response.json()
+
+    @with_retry(max_retries=3)
+    @with_telemetry("Airflow", "get_all_dag_ids")
+    def get_all_dag_ids(self) -> List[str]:
+        url = f"{self.base_url}/dags"
+        response = requests.get(url, auth=self.auth, timeout=10)
+        response.raise_for_status()
+        return [dag["dag_id"] for dag in response.json().get("dags", [])]
+
+    @with_retry(max_retries=3)
+    @with_telemetry("Airflow", "get_task_xcoms")
+    def get_task_xcoms(self, dag_id: str, run_id: str, task_id: str) -> List[Dict[str, Any]]:
+        url = f"{self.base_url}/dags/{dag_id}/dagRuns/{run_id}/taskInstances/{task_id}/xcomEntries"
+        response = requests.get(url, auth=self.auth, timeout=10)
+        if response.status_code == 404:
+            return []
+        response.raise_for_status()
+        return response.json().get("xcom_entries", [])
+
+    @with_retry(max_retries=3)
+    @with_telemetry("Airflow", "get_pool_stats")
+    def get_pool_stats(self) -> Dict[str, Any]:
+        url = f"{self.base_url}/pools"
+        response = requests.get(url, auth=self.auth, timeout=10)
+        if response.status_code == 404:
+            return {}
+        response.raise_for_status()
+        return {"pools": response.json().get("pools", [])}

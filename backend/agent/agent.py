@@ -3,7 +3,7 @@ The Investigation Agent Orchestrator.
 Wraps the AgentCore Harness and the Deterministic Pipeline.
 """
 from typing import List, Optional
-from backend.agent.harness.core import AgentCoreHarness
+from backend.agent.agentcore_adapter import AgentCoreAdapter
 from backend.agent.planner.selector import SkillPlanner
 
 class InvestigationAgent:
@@ -13,7 +13,7 @@ class InvestigationAgent:
     boundary preventing the LLM from interacting directly with deterministic APIs.
     """
     def __init__(self):
-        self.harness = AgentCoreHarness()
+        self.harness = AgentCoreAdapter()
         self.planner = SkillPlanner()
 
     def handle_request(self, user_query: str, session_id: Optional[str] = None) -> str:

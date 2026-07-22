@@ -69,51 +69,149 @@ class InvestigationService:
             logger.info(f"Starting async pipeline for {investigation_id}")
             
             # 2. Perform all imports and setups inside the protected block
-            from backend.investigation.pipeline import DeterministicInvestigationEngine
+            from backend.agent.agentcore_adapter import AgentCoreAdapter
             from backend.investigation.models import InvestigationRequest
             from backend.integrations.registry import registry
+            from backend.infrastructure.redis_pubsub import redis_pubsub
             import time
             
-            # Artifacts generated during the pipeline run will be accumulated here
-            # and only appended to the investigation if the pipeline completely succeeds.
             accumulated_artifacts = []
             
             def state_callback(state: InvestigationState, progress: int, artifacts: Optional[List[ArtifactType]]):
                 self.update_state(investigation_id, state, progress=progress)
                 if artifacts:
-                    # Depending on how the engine pushes artifacts, we either append them to the local list,
-                    # or in the case of COMPLETED, they are final.
-                    # Since our modified engine pushes all of them at COMPLETED, we just use them there.
                     accumulated_artifacts.extend(artifacts if isinstance(artifacts, list) else [artifacts])
-                    
-                # Add artificial delay to simulate real work for observation
                 time.sleep(1.0)
+                from backend.domain.events import StateChangeEvent
+                evt = StateChangeEvent(
+                    id=f"evt_{uuid.uuid4().hex[:8]}",
+                    new_state=state.value,
+                    progress=progress or 0
+                )
+                redis_pubsub.publish(f"investigation:{investigation_id}:state", evt.model_dump(mode='json'))
                 
-            req = InvestigationRequest(
+            req = InvestigationRequest.from_legacy(
+                investigation_id=investigation_id,
                 dag_id=dag_id,
-                execution_date=datetime.now(timezone.utc).isoformat(),
-                reported_symptom=user_query
+                user_query=user_query,
             )
             
-            engine = DeterministicInvestigationEngine()
-            report = engine.execute(req, state_callback=state_callback)
+            harness = AgentCoreAdapter()
+            report = harness.run_investigation(req, state_callback=state_callback)
             
-            # Dispatch Slack Notification
+            # Dispatch Slack Notification (legacy format)
             self.update_state(investigation_id, InvestigationState.SLACK_DISPATCH, progress=95)
             slack = registry.get_slack_client()
             slack.post_message(
                 f"✅ *Investigation Completed*\n*DAG:* `{dag_id}`\n*ID:* `{investigation_id}`\n*Root Cause:* {report.root_cause}"
             )
             
-            # Commit the artifacts since we succeeded
             inv = self.repository.get(investigation_id)
             if inv:
                 inv.artifacts.extend(accumulated_artifacts)
                 self.repository.update(inv)
                 
-            # Finish up
             self.update_state(investigation_id, InvestigationState.COMPLETED, progress=100)
             
         except Exception as e:
             logger.exception(f"Investigation pipeline failed unexpectedly: {e}")
             self.update_state(investigation_id, InvestigationState.FAILED, progress=100)
+            from backend.domain.events import StateChangeEvent
+            from backend.infrastructure.redis_pubsub import redis_pubsub
+            evt = StateChangeEvent(
+                id=f"evt_{uuid.uuid4().hex[:8]}",
+                new_state=InvestigationState.FAILED.value,
+                progress=100
+            )
+            redis_pubsub.publish(f"investigation:{investigation_id}:state", evt.model_dump(mode='json'))
+
+    def execute_investigation_pipeline_async_context(self, investigation_id: str, incident_context):
+        """
+        New primary pipeline entry point: accepts a structured IncidentContext.
+        Produces richer Slack alerts including severity, environment, and trigger source.
+        """
+        from backend.observability.logger import setup_logger, investigation_id_var, get_trace_id
+
+        investigation_id_var.set(investigation_id)
+        get_trace_id()
+        logger = setup_logger(__name__)
+
+        try:
+            self.update_state(investigation_id, InvestigationState.STARTING, progress=5)
+            logger.info(
+                f"Starting context-driven pipeline for {investigation_id} | "
+                f"workflow={incident_context.workflow_id} | "
+                f"severity={incident_context.severity.value} | "
+                f"goal={incident_context.investigation_goal.value}"
+            )
+
+            from backend.agent.agentcore_adapter import AgentCoreAdapter
+            from backend.investigation.models import InvestigationRequest
+            from backend.integrations.registry import registry
+            from backend.infrastructure.redis_pubsub import redis_pubsub
+            import time
+
+            accumulated_artifacts = []
+
+            def state_callback(state: InvestigationState, progress: int, artifacts: Optional[List[ArtifactType]]):
+                self.update_state(investigation_id, state, progress=progress)
+                if artifacts:
+                    accumulated_artifacts.extend(artifacts if isinstance(artifacts, list) else [artifacts])
+                time.sleep(1.0)
+                from backend.domain.events import StateChangeEvent
+                evt = StateChangeEvent(
+                    id=f"evt_{uuid.uuid4().hex[:8]}",
+                    new_state=state.value,
+                    progress=progress or 0
+                )
+                redis_pubsub.publish(f"investigation:{investigation_id}:state", evt.model_dump(mode='json'))
+
+            req = InvestigationRequest.from_context(
+                investigation_id=investigation_id,
+                ctx=incident_context,
+            )
+
+            harness = AgentCoreAdapter()
+            report = harness.run_investigation(req, state_callback=state_callback)
+
+            # Dispatch enriched Slack alert
+            self.update_state(investigation_id, InvestigationState.SLACK_DISPATCH, progress=95)
+            slack = registry.get_slack_client()
+            sev = incident_context.severity.value.upper()
+            env = incident_context.environment
+            sev_emoji = {"CRITICAL": "🔴", "HIGH": "🟠", "MEDIUM": "🟡", "LOW": "🟢"}.get(sev, "✅")
+            node_info = (
+                f"\n*Failed Node:* `{incident_context.failed_node_id}`"
+                if incident_context.failed_node_id else ""
+            )
+            retry_info = (
+                f" (attempt {incident_context.retry_number})"
+                if incident_context.retry_number else ""
+            )
+            slack.post_message(
+                f"{sev_emoji} *[{sev}/{env}] Investigation Completed*\n"
+                f"*Workflow:* `{incident_context.workflow_id}`{node_info}{retry_info}\n"
+                f"*Root Cause:* {report.root_cause}\n"
+                f"*ID:* `{investigation_id}` | "
+                f"Triggered by: {incident_context.trigger_source.value}"
+            )
+
+            inv = self.repository.get(investigation_id)
+            if inv:
+                inv.artifacts.extend(accumulated_artifacts)
+                self.repository.update(inv)
+
+            self.update_state(investigation_id, InvestigationState.COMPLETED, progress=100)
+
+        except Exception as e:
+            logger.exception(f"Context-driven investigation pipeline failed: {e}")
+            self.update_state(investigation_id, InvestigationState.FAILED, progress=100)
+            from backend.domain.events import StateChangeEvent
+            from backend.infrastructure.redis_pubsub import redis_pubsub
+            evt = StateChangeEvent(
+                id=f"evt_{uuid.uuid4().hex[:8]}",
+                new_state=InvestigationState.FAILED.value,
+                progress=100
+            )
+            redis_pubsub.publish(f"investigation:{investigation_id}:state", evt.model_dump(mode='json'))
+

@@ -1,4 +1,4 @@
-from backend.integrations.core.interfaces import IAWSRegistry, ICloudWatchClient, ICloudTrailClient, ICostExplorerClient, ISageMakerClient, ILambdaClient
+from backend.integrations.core.interfaces import IAWSRegistry, ICloudWatchClient, ICloudTrailClient, ICostExplorerClient, ISageMakerClient, ILambdaClient, IS3Client
 from backend.integrations.aws.cloudwatch.client import Boto3CloudWatchClient
 from backend.integrations.aws.cloudtrail.client import Boto3CloudTrailClient
 
@@ -25,3 +25,6 @@ class AWSRegistryImpl(IAWSRegistry):
         
     def get_lambda_client(self) -> ILambdaClient:
         raise NotImplementedError("Lambda integration pending.")
+
+    def get_s3_client(self) -> IS3Client:
+        raise NotImplementedError("S3 integration pending.")

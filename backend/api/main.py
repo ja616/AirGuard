@@ -4,6 +4,7 @@ FastAPI application entrypoint.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.api.v1 import investigations, ws, connections, slack_webhooks, health, metrics
+from backend.api.v1 import airflow_webhook
 from backend.integrations.registry import registry
 from backend.integrations.airflow.client import RestAirflowClient
 from backend.integrations.aws.registry import AWSRegistryImpl
@@ -32,7 +33,11 @@ def create_app() -> FastAPI:
     app.include_router(connections.router)
     app.include_router(slack_webhooks.router)
     app.include_router(investigations.router, prefix="/api/v1")
+    app.include_router(airflow_webhook.router)  # No prefix — router defines its own
     
+    from backend.api.v1 import aws_sns_webhook
+    app.include_router(aws_sns_webhook.router)
+
     # Include WebSocket routers
     app.include_router(ws.router, prefix="/api/v1")
         

@@ -16,36 +16,31 @@ async def investigation_stream(
 ):
     await websocket.accept()
     
-    # In Phase 4, we simulate the state machine progression to demonstrate the architecture
     try:
         inv = service.get_investigation(id)
         if not inv:
             await websocket.close(code=1008, reason="Investigation not found")
             return
             
-        states_to_simulate = [
-            InvestigationState.RUNNING,
-            InvestigationState.COLLECTING_EVIDENCE,
-            InvestigationState.CORRELATING,
-            InvestigationState.GENERATING_TIMELINE,
-            InvestigationState.GENERATING_REPORT,
-            InvestigationState.WAITING_APPROVAL
-        ]
+        from backend.infrastructure.redis_pubsub import redis_pubsub
         
-        for state in states_to_simulate:
-            await asyncio.sleep(1.5)  # Simulate work
-            service.update_state(id, state)
-            
-            # Use our strict contract mapping progress from state
+        # If the investigation is already completed or failed, we can just send the final state and close
+        if inv.state in [InvestigationState.COMPLETED, InvestigationState.FAILED]:
             evt = StateChangeEvent(
                 id=f"evt_{uuid.uuid4().hex[:8]}",
-                new_state=state.value,
-                progress=service.get_investigation(id).progress
+                new_state=inv.state.value,
+                progress=inv.progress
             )
-            
-            # Pydantic json serialization
             await websocket.send_json(evt.model_dump(mode='json'))
+            return
             
+        # Callback for incoming Redis messages
+        async def on_message(data: dict):
+            await websocket.send_json(data)
+            
+        # Start subscribing to real-time events
+        await redis_pubsub.subscribe(f"investigation:{id}:state", on_message)
+        
     except WebSocketDisconnect:
         pass
     except Exception as e:

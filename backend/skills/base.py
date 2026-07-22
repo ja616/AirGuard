@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from typing import List
 from backend.knowledge.models import OperationalPlaybook
 from backend.evidence.models import Evidence
-from backend.investigation.models import InvestigationRequest, InvestigationResult
+from backend.investigation.models import InvestigationRequest, OperationalReport
 
 class BaseSkill(ABC):
     """
@@ -46,6 +46,6 @@ class BaseSkill(ABC):
         return missing
 
     @abstractmethod
-    def execute(self, request: InvestigationRequest, evidence: List[Evidence]) -> InvestigationResult:
+    def execute(self, request: InvestigationRequest, evidence: List[Evidence]) -> OperationalReport:
         """Execute the pipeline, armed with the verified domain evidence."""
         pass
