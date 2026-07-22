@@ -1,5 +1,6 @@
 # AirGuard
 
+![AirGuard Architecture](docs/architecture.png)
 **AirGuard** is an Agentic Workflow Investigation Copilot designed to autonomously investigate pipeline failures, correlate telemetry across Apache Airflow and AWS, and dispatch actionable, interactive operational reports to Slack. 
 
 Built on a hybrid architecture, AirGuard eliminates LLM hallucinations by splitting responsibilities: the LLM acts strictly as a "Detective" to gather evidence, while a Deterministic Python Engine acts as the "Judge" to synthesize the Root Cause.
@@ -57,24 +58,9 @@ npm run dev
 
 ## 🎬 Try The Demo Scenarios
 
-We've pre-loaded Airflow with two specific scenarios to demonstrate AirGuard's cross-domain reasoning. You can trigger them using our local simulation scripts.
+We've pre-loaded Airflow with specific scenarios to demonstrate AirGuard's cross-domain reasoning, such as the **Phantom Retraining Storm** and the **SageMaker Timeout Loop**.
 
-### Scenario A: The Phantom Retraining Storm (Cost Spike)
-*   **The Setup:** A misconfigured DAG (`ml_training_pipeline`) is running successfully every minute instead of daily, spawning hundreds of costly SageMaker jobs. No Airflow alerts are triggered because tasks are technically succeeding.
-*   **The Trigger:** Simulate an AWS Cost Explorer anomaly alert.
-    ```bash
-    python scripts/trigger_aws_anomaly.py
-    ```
-*   **The Magic:** AirGuard correlates the AWS cost spike with the excessive Airflow backfill runs, catching the silent failure.
-
-### Scenario B: SageMaker Timeout Loop
-*   **The Setup:** The `daily_ml_pipeline` DAG is stuck. The SageMaker API times out after 30 minutes, and Airflow retries 3 times, leaving orphaned jobs in AWS.
-*   **The Trigger:** Run the script to fire an Airflow Webhook payload.
-    ```bash
-    python scripts/trigger_investigation.py
-    # Note: Ensure Block #6 is uncommented in the script
-    ```
-*   **The Magic:** AirGuard reads the Airflow task logs for "timeout", sees the `try_number=3`, and correlates this to diagnose a Rapid Retry Storm + Timeout Anomaly.
+👉 **[View the full demo walkthroughs and instructions here](docs/DEMO_SCENARIOS.md)**
 
 ---
 
