@@ -54,7 +54,7 @@ def run(evidence: List[Evidence]) -> NormalizedEvidenceBundle:
             if p.get("failed_count", 0) > 0:
                 signals["task_state_failed"] = True
                 max_try = p.get("max_try_number", 1)
-                if max_try > 4:
+                if max_try >= 3:
                     signals["task_retry_count_high"] = True
                 else:
                     signals["task_retry_count_low"] = True
@@ -85,6 +85,17 @@ def run(evidence: List[Evidence]) -> NormalizedEvidenceBundle:
                 signals["task_logs_contain_permission_error"] = True
             if p.get("contains_oom_kill"):
                 signals["task_oom_killed"] = True
+            # Detect SageMaker-specific patterns in raw log text
+            raw_logs = p.get("logs", "").lower()
+            if "sagemaker" in raw_logs:
+                signals["sagemaker_job_involved"] = True
+            if "sagemaker" in raw_logs and ("timeout" in raw_logs or "timed out" in raw_logs):
+                signals["sagemaker_timeout_detected"] = True
+                signals["task_state_running_timeout"] = True
+                signals["task_duration_high"] = True
+            if "up_for_retry" in raw_logs or "marking task as up_for_retry" in raw_logs:
+                signals["task_retry_count_high"] = True
+                signals["retry_interval_short"] = True
 
         # ── Airflow XComs ────────────────────────────────────────────────────
         elif e.source == "airflow_xcoms":

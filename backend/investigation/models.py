@@ -282,6 +282,7 @@ class BlastRadius(BaseModel):
     affected_tasks: List[str]
     affected_aws_resources: List[str]
     estimated_cost_impact: Optional[float] = None
+    summary: List[str] = Field(default_factory=list, description="LLM-generated operational bullet points")
 
 class OperationalReport(BaseModel):
     """

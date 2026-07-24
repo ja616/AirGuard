@@ -35,6 +35,12 @@ def run(classified: ClassifiedIncident, bundle: NormalizedEvidenceBundle) -> Lis
 
     if signals.get("upstream_task_failed"):
         actions.append(RecommendedAction(action="Investigate and resolve the upstream dependency failure first."))
+
+    if signals.get("sagemaker_timeout_detected") or signals.get("sagemaker_job_involved"):
+        actions.append(RecommendedAction(action="Immediately check the AWS SageMaker console for orphaned training jobs (sagemaker-xgboost-*). These jobs are still consuming compute resources and incurring cost."))
+        actions.append(RecommendedAction(action="Increase the SageMaker operator timeout in the DAG (currently <30 min). XGBoost on this dataset likely requires 45-60 min."))
+        actions.append(RecommendedAction(action="Add exponential backoff to retries in the DAG's default_args (retry_delay=timedelta(minutes=5)) to prevent API hammering on each retry."))
+        actions.append(RecommendedAction(action="Consider using SageMaker Managed Spot Training to reduce training cost during timeout investigations."))
         
     if signals.get("xcom_quality_check_failed"):
         actions.append(RecommendedAction(action="Review upstream data source for missing or malformed records triggering XCom assertions."))

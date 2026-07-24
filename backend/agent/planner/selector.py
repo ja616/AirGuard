@@ -201,7 +201,7 @@ class RuntimeMetricsScorer(CapabilityScorer):
         wid = ctx.workflow_id.lower()
         node = (ctx.failed_node_id or "").lower()
         err = (ctx.orchestrator_error_type or "").lower()
-        for kw in ("lambda", "cloud", "throttle", "timeout", "invocation"):
+        for kw in ("lambda", "cloud", "throttle", "timeout", "invocation", "sagemaker", "ml", "training", "model", "inference"):
             if kw in wid or kw in node or kw in err:
                 s += 3.0
         if ctx.investigation_goal == InvestigationGoal.PERFORMANCE:

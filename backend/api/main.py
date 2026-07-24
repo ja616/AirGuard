@@ -1,6 +1,9 @@
 """
 FastAPI application entrypoint.
 """
+import dotenv
+dotenv.load_dotenv('.env.local')
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.api.v1 import investigations, ws, connections, slack_webhooks, health, metrics

@@ -105,7 +105,7 @@ def create_investigation(
         background_tasks.add_task(
             service.execute_investigation_pipeline_async_context,
             inv.id,
-            ctx,
+            ctx
         )
     else:
         # Legacy path: user_query or empty string

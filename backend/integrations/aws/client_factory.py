@@ -1,7 +1,10 @@
 import os
 import boto3
+import threading
 os.environ.pop("AWS_PROFILE", None)
 from backend.integrations.core.config import config
+
+_client_lock = threading.Lock()
 
 def get_boto3_client(service_name: str, region_name: str = None):
     """
@@ -18,4 +21,5 @@ def get_boto3_client(service_name: str, region_name: str = None):
         kwargs["aws_access_key_id"] = config.aws_access_key_id
         kwargs["aws_secret_access_key"] = config.aws_secret_access_key
         
-    return boto3.client(service_name, **kwargs)
+    with _client_lock:
+        return boto3.client(service_name, **kwargs)

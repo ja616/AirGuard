@@ -10,8 +10,10 @@ x-airflow-common:
     - AIRFLOW__CORE__EXECUTOR=LocalExecutor
     - AIRFLOW__CORE__LOAD_EXAMPLES=false
     - AIRFLOW__API__AUTH_BACKENDS=airflow.api.auth.backend.basic_auth
+    - AIRFLOW__WEBSERVER__SECRET_KEY=airguard_static_secret_key_12345
   volumes:
     - ./dags:/opt/airflow/dags
+    - airflow-logs:/opt/airflow/logs
   depends_on:
     postgres-airflow:
       condition: service_healthy
@@ -72,7 +74,8 @@ services:
 
   airflow-webserver:
     <<: *airflow-common
-    command: webserver
+    # Remove stale PID file (left by force-recreate) before starting webserver
+    command: bash -c "rm -f /opt/airflow/airflow-webserver.pid && airflow webserver"
     ports:
       - "8080:8080"
     healthcheck:
@@ -90,6 +93,7 @@ services:
   airflow-scheduler:
     <<: *airflow-common
     command: scheduler
+    hostname: airflow-scheduler
     depends_on:
       postgres-airflow:
         condition: service_healthy
@@ -100,12 +104,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: uvicorn backend.api.main:app --host 0.0.0.0 --port 8000
+    command: uvicorn backend.api.main:app --host 0.0.0.0 --port 8000 --reload
     env_file:
       - .env.local
     environment:
       - AIRGUARD_ENV=local
       - AIRFLOW_API_URL=http://airflow-webserver:8080/api/v1
+    volumes:
+      - ./backend:/app/backend
     ports:
       - "8000:8000"
     depends_on:
@@ -128,3 +134,4 @@ networks:
 volumes:
   airguard-db-data:
   airflow-db-data:
+  airflow-logs:

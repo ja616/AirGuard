@@ -122,13 +122,13 @@ if __name__ == "__main__":
     # )
 
     # 6. DEMO: SageMaker Timeout Loop
-    # trigger_structured(
-    #     dag_id="daily_ml_pipeline",
-    #     failed_node_id="train_sagemaker_model",
-    #     severity="high",
-    #     execution_state="failed",
-    #     retry_number=3,
-    #     goal="root_cause",
-    # )
+    trigger_structured(
+        dag_id="daily_ml_pipeline",
+        failed_node_id="train_sagemaker_model",
+        severity="high",
+        execution_state="failed",
+        retry_number=3,
+        goal="root_cause",
+    )
 
 

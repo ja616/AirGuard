@@ -173,8 +173,13 @@ def get_task_instances(request: InvestigationRequest) -> Optional[Evidence]:
             },
             metadata={"dag_id": request.dag_id}
         )
-    latest_run = runs[0]
-    run_id = latest_run.get("dag_run_id") or latest_run.get("run_id", "")
+    if getattr(request.incident_context, 'workflow_execution_id', None):
+        run_id = request.incident_context.workflow_execution_id
+    else:
+        # Sort by execution_date to get the newest run
+        runs.sort(key=lambda r: r.get("execution_date", ""))
+        latest_run = runs[-1]
+        run_id = latest_run.get("dag_run_id") or latest_run.get("run_id", "")
     if not run_id:
         return None
     tasks = client.get_task_instances(request.dag_id, run_id)
@@ -221,8 +226,13 @@ def get_failed_task_logs(request: InvestigationRequest) -> Optional[Evidence]:
             },
             metadata={"dag_id": request.dag_id}
         )
-    latest_run = runs[0]
-    run_id = latest_run.get("dag_run_id") or latest_run.get("run_id", "")
+    if getattr(request.incident_context, 'workflow_execution_id', None):
+        run_id = request.incident_context.workflow_execution_id
+    else:
+        # Sort by execution_date to get the newest run
+        runs.sort(key=lambda r: r.get("execution_date", ""))
+        latest_run = runs[-1]
+        run_id = latest_run.get("dag_run_id") or latest_run.get("run_id", "")
     if not run_id:
         return None
     tasks = client.get_task_instances(request.dag_id, run_id)
@@ -234,8 +244,9 @@ def get_failed_task_logs(request: InvestigationRequest) -> Optional[Evidence]:
     contains_oom_kill = False
     for t in failed_tasks:
         task_id = t.get("task_id", "")
+        try_num = max(1, t.get("try_number", 1))
         try:
-            log_text = client.get_task_logs(request.dag_id, run_id, task_id)
+            log_text = client.get_task_logs(request.dag_id, run_id, task_id, try_num)
             all_logs[task_id] = log_text
             if "lambda" in log_text.lower() or "Lambda" in log_text:
                 contains_lambda = True
@@ -413,8 +424,13 @@ def get_dag_run_by_id(request: InvestigationRequest) -> Optional[Evidence]:
             },
             metadata={"dag_id": request.dag_id}
         )
-    latest = runs[0]
-    run_id = latest.get("dag_run_id") or latest.get("run_id", "")
+    if getattr(request.incident_context, 'workflow_execution_id', None):
+        run_id = request.incident_context.workflow_execution_id
+    else:
+        # Sort by execution_date to get the newest run
+        runs.sort(key=lambda r: r.get("execution_date", ""))
+        latest = runs[-1]
+        run_id = latest.get("dag_run_id") or latest.get("run_id", "")
     run_detail = client.get_dag_run_by_id(request.dag_id, run_id) if run_id else latest
     return AirflowEvidence(
         source="airflow_dag_run_detail",
@@ -451,7 +467,12 @@ def detect_retry_storm(request: InvestigationRequest) -> Optional[Evidence]:
             },
             metadata={"dag_id": request.dag_id}
         )
-    run_id = runs[0].get("dag_run_id") or runs[0].get("run_id", "")
+    if getattr(request.incident_context, 'workflow_execution_id', None):
+        run_id = request.incident_context.workflow_execution_id
+    else:
+        # Sort by execution_date to get the newest run
+        runs.sort(key=lambda r: r.get("execution_date", ""))
+        run_id = runs[-1].get("dag_run_id") or runs[-1].get("run_id", "")
     tasks = client.get_task_instances(request.dag_id, run_id) if run_id else []
     max_try = max((t.get("try_number", 1) for t in tasks), default=1)
     retry_interval_short = False

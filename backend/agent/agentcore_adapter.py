@@ -192,35 +192,11 @@ class AgentCoreAdapter:
         Build tool schemas for AgentCore inline function registration.
         Only tools that exist in TOOL_REGISTRY are exposed to the LLM.
         The planner determines which tools are in scope — the LLM picks which to call.
+
+        Tool descriptions live in tools/schemas.py (single source of truth).
+        Adding a new tool: edit tools/registry.py + tools/schemas.py — not here.
         """
-        tool_descriptions = {
-            "get_dag_runs": "Retrieve the last 10 DAG run records including state and run type.",
-            "get_dag_details": "Retrieve DAG metadata including schedule, concurrency, and tags.",
-            "get_dag_run_by_id": "Retrieve a specific DAG run by ID.",
-            "get_import_errors": "Check Airflow for DAG import or parsing errors.",
-            "get_task_instances": "Retrieve task instance states for the DAG run.",
-            "get_failed_task_logs": "Retrieve logs from the most recently failed task instance.",
-            "get_pool_stats": "Retrieve Airflow pool slot usage and queue depth.",
-            "get_redis_health": "Check Redis connectivity and health.",
-            "get_redis_queue_depth": "Get the number of tasks queued in Redis.",
-            "get_scheduler_health": "Check Airflow scheduler and metadatabase health.",
-            "get_scheduler_heartbeat": "Measure scheduler heartbeat lag in seconds.",
-            "get_airflow_version": "Retrieve the current Airflow version.",
-            "get_airflow_config": "Retrieve relevant Airflow configuration values.",
-            "get_task_xcoms": "Retrieve XCom values produced by tasks in the DAG run.",
-            "get_postgres_connection_count": "Count active Postgres connections.",
-            "get_postgres_slow_queries": "Retrieve slow queries from Postgres pg_stat_activity.",
-            "get_lambda_errors": "Retrieve Lambda function error count from CloudWatch.",
-            "get_lambda_duration": "Retrieve Lambda function average duration from CloudWatch.",
-            "get_lambda_throttles": "Retrieve Lambda throttle count from CloudWatch.",
-            "get_lambda_invocations": "Retrieve Lambda invocation count from CloudWatch.",
-            "get_lambda_invocation_events": "Retrieve CloudTrail events for Lambda invocations.",
-            "get_iam_policy_changes": "Retrieve recent IAM policy change events from CloudTrail.",
-            "get_resource_config_changes": "Retrieve recent AWS resource config changes from CloudTrail.",
-            "get_lambda_cost_delta": "Estimate Lambda cost delta from Cost Explorer.",
-            "detect_cascade_failure": "Detect cross-DAG cascade failure patterns.",
-            "get_all_dags": "List all DAGs and their active/paused state.",
-        }
+        from backend.tools.schemas import TOOL_DESCRIPTIONS
 
         definitions = []
         for name in tool_names:
@@ -230,7 +206,9 @@ class AgentCoreAdapter:
                     "name": name,
                     "config": {
                         "inlineFunction": {
-                            "description": tool_descriptions.get(name, f"Collect {name.replace('_', ' ')} evidence."),
+                            "description": TOOL_DESCRIPTIONS.get(
+                                name, f"Collect {name.replace('_', ' ')} evidence."
+                            ),
                             "inputSchema": {
                                 "json": {
                                     "type": "object",

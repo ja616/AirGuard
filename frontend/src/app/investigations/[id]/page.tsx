@@ -163,9 +163,17 @@ export default function InvestigationWorkspace() {
           </div>
           <div className="p-4 bg-zinc-900 rounded-md border border-zinc-800">
             <h3 className="text-xs text-zinc-500 uppercase font-semibold mb-1">Blast Radius</h3>
-            <div className="text-sm text-zinc-200 font-medium line-clamp-2">
+            <div className="text-sm text-zinc-200 font-medium">
               {r?.blast_radius ? (
-                `${r.blast_radius.affected_workflows?.length || 0} Workflows, ${r.blast_radius.affected_aws_resources?.length || 0} Resources`
+                r.blast_radius.summary?.length > 0 ? (
+                  <div className="space-y-1 text-zinc-300 mt-1 font-normal text-xs">
+                    {r.blast_radius.summary.map((item: string, i: number) => (
+                      <div key={i}>{item}</div>
+                    ))}
+                  </div>
+                ) : (
+                  `${r.blast_radius.affected_workflows?.length || 0} Workflows, ${r.blast_radius.affected_aws_resources?.length || 0} Resources`
+                )
               ) : (isFailed ? <span className="text-rose-500">Failed</span> : "Assessing...")}
             </div>
           </div>
@@ -197,12 +205,16 @@ export default function InvestigationWorkspace() {
               <div className="space-y-8 max-w-4xl">
                 <section>
                   <h2 className="text-lg font-semibold text-zinc-100 mb-2">Executive Summary</h2>
-                  <p className="text-sm text-zinc-300 leading-relaxed">{r.executive_summary}</p>
+                  <div className="text-sm text-zinc-300 leading-relaxed prose prose-invert prose-sm max-w-none">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{r.executive_summary}</ReactMarkdown>
+                  </div>
                 </section>
                 <Separator className="bg-zinc-800" />
                 <section>
                   <h2 className="text-lg font-semibold text-zinc-100 mb-2">Root Cause & Confidence</h2>
-                  <p className="text-sm text-zinc-300 leading-relaxed mb-4">{r.root_cause}</p>
+                  <div className="text-sm text-zinc-300 leading-relaxed mb-4 prose prose-invert prose-sm max-w-none">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{r.root_cause}</ReactMarkdown>
+                  </div>
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-emerald-950/30 border border-emerald-900/50 p-4 rounded-md">

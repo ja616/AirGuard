@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchInvestigations } from "@/lib/api";
 import { AlertTriangle, X } from "lucide-react";
@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 
 export function IncidentToast() {
   const router = useRouter();
-  const [knownIds, setKnownIds] = useState<Set<string>>(new Set());
+  const knownIds = useRef<Set<string>>(new Set());
   const [newIncident, setNewIncident] = useState<any | null>(null);
 
   const { data: investigations } = useQuery({
@@ -20,27 +20,27 @@ export function IncidentToast() {
   useEffect(() => {
     if (!investigations) return;
 
-    if (knownIds.size === 0) {
-      // First load: just record existing IDs, don't toast
-      setKnownIds(new Set(investigations.map((i) => i.id)));
+    // First load with data: just record existing IDs, don't toast
+    if (knownIds.current.size === 0 && investigations.length > 0) {
+      knownIds.current = new Set(investigations.map((i) => i.id));
       return;
     }
 
     // Check for new IDs
     const currentIds = new Set(investigations.map((i) => i.id));
-    const newIds = investigations.filter((i) => !knownIds.has(i.id));
+    const newIds = investigations.filter((i) => !knownIds.current.has(i.id));
 
     if (newIds.length > 0) {
       // Show the most recent new incident
       setNewIncident(newIds[0]);
-      setKnownIds(currentIds);
+      knownIds.current = currentIds;
 
       // Auto-hide after 10 seconds
       setTimeout(() => {
         setNewIncident(null);
       }, 10000);
     }
-  }, [investigations, knownIds]);
+  }, [investigations]);
 
   if (!newIncident) return null;
 

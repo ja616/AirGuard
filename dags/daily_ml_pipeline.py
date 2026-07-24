@@ -3,6 +3,8 @@ from airflow.operators.bash import BashOperator
 from airflow.utils.dates import days_ago
 from datetime import timedelta
 
+from airguard_callbacks import notify_airguard_failure, notify_airguard_retry
+
 # SCENARIO: The SageMaker Timeout Loop
 # This DAG simulates an ML pipeline where the training task gets stuck,
 # times out, and retries multiple times. This leaves orphaned SageMaker
@@ -14,7 +16,10 @@ default_args = {
     'depends_on_past': False,
     'start_date': days_ago(1),
     'retries': 3,
-    'retry_delay': timedelta(seconds=10), # Fast retry for demo purposes
+    'retry_delay': timedelta(seconds=10),  # Fast retry for demo purposes
+    # ── AirGuard: auto-trigger investigation on failure / retry ──────────────
+    'on_failure_callback': notify_airguard_failure,
+    'on_retry_callback': notify_airguard_retry,
 }
 
 dag = DAG(
@@ -23,7 +28,9 @@ dag = DAG(
     description='Daily ML Pipeline',
     schedule_interval='@daily',
     catchup=False,
-    tags=['ml', 'sagemaker', 'production']
+    tags=['ml', 'sagemaker', 'production'],
+    # DAG-level failure callback (fires when the whole run is marked failed)
+    on_failure_callback=None,   # task-level callbacks cover this scenario
 )
 
 extract_data = BashOperator(
@@ -44,9 +51,9 @@ feature_engineering = BashOperator(
     dag=dag,
 )
 
-# The failing task
-# It prints logs indicating a timeout, so AirGuard's AgentCore can pick up
-# the "timeout" keyword when reading the Airflow logs.
+# The failing task.
+# It prints logs indicating a timeout so AirGuard's evidence collection
+# picks up the "SageMaker API Timeout" keyword when reading the Airflow logs.
 train_sagemaker_model = BashOperator(
     task_id='train_sagemaker_model',
     bash_command='''
